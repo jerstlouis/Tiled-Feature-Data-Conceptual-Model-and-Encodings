@@ -1,0 +1,82 @@
+[obligation=informative]
+== Tiled Feature Data Conceptual Model
+
+=== What is tiled feature data (vector tiles)?
+
+Tiled feature data is geospatial data modeled as Simple Features which are partitioned following a particular tiling scheme.
+
+Features are partitioned into distinct tiles for achieving high performance visualization and analytics, while
+limiting the amount of memory necessary to process an individual tile and enabling parallel or sequential processing of different parts
+of a detailed feature spanning a large area.
+
+A feature whose geometry spreads across multiple tiles conceptually remains a single entity, with the same associated identifier and attributes.
+When encoding tiled feature data, attributes may either be included directly within the tile data blob, or they they may be referenced by the feature identifier.
+
+Tiled feature data generally encodes a feature collection consisting of multiple features, and a given tile may contain elements from one or multiple features.
+
+Depending on the dimensionality of the geometry, certain aspects specific to tiled features need to be considered.
+When tiling 1-dimensional geometry, such as LineStrings and MultiLineStrings, clipping the geometry against tile boundaries introduces new vertices.
+In order to enable the reconstruction of the original geometry, identifying whether a vertex is an original or artificially introduced vertex can be useful.
+When tiling 2-dimensional geometry, such as Polygons and MultiPolygons, new vertices as well as new line segments are also introduced at tile boundaries.
+This poses issues not only for feature geometry reconstruction, but also for rendering with a stroke which would make visible the artificial seams at the tile boundaries.
+
+The multiplicity of a simple feature geometry may change as a result of tiling.
+For example, a MultiPoint, MultiLineString or MultiPolygon may contain a single element within a particular tile.
+The reverse can also happen, as a tile boundary may cut a LineString or Polygon in a way which leaves two or more elements of the same
+feature geometry within a particular tile. Reconstructing the original features by assembling elements spread across multiple tiles will also
+change the geometry type back to its original nature.
+As such, in tiled feature data, the distinction between single and multi possibilities of a geometry type are usually treated in a uniform manner in their encodings.
+For polygons, it is also possible for an inner contour to become an outer contour as a result of clipping against a tile boundary.
+
+=== Tile Feature Data Model
+
+------------------------------------
+   |Feature Collection Tile|
+   -------------------------
+           |
+    FeatureCollection
+         [
+              Feature -> geometry
+                                --->    artificial segments (for (multi)polygons)
+                                --->    artificial vertices (for (multi)linestrings)
+         ]
+
+   |Feature Collection TileSet|
+      [
+            |Feature Collection Tile|
+      ]
+
+     (recombining features as whole feature)
+------------------------------------
+
+=== Describing tiled feature data tilesets
+
+The https://docs.ogc.org/is/17-083r4/17-083r4.html[OGC 2D Tile Matrix Set and Tileset Metadata Standard] defines a conceptual and logical model,
+as well as XML and JSON encodings for describing tileset of tiled feature data. That model includes describing one or more geospatial data layers
+from which the data originate, the dimensionality of their geometry, as well as a logical schema for the attributes associated with the features they contain.
+
+=== Encoding tiled feature data
+
+While encodings for simple features can encode tiled feature data, encodings intended for tiled feature data usually aim to provide improved storage efficiency
+and address the ability to distinguish artificial vertices and segments introduced as the result of tiling.
+
+==== Compact Storage Consideration
+
+One prevalent approach to improving storage efficiency is quantization of geometry coordinates to a fine-resolution substrate grid localized to the tile's spatial extent.
+Using relative coordinates for subsequent points along a line string or polygon contour significantly improves the compressibility of geometry coordinates.
+The local nature and specific scale of tiled feature data enables the use of quantization, which is otherwise not suitable for global coordinates of arbitrary scale.
+The integer nature of quantized coordinates in turn enables the use of relative coordinates, which would not yield the same compression benefits for floating point coordinates.
+
+==== Rendering and Performance Consideration
+
+Ability to distinguish artificial segments introduced by clipping to the tile extent for rendering and reconstitution considerations, for polygons in particular.
+
+Ability to reconstitute whole features (difficulty depends on approach to arficial segments).
+
+==== Encoding options for tiled feature data
+
+* WKBC: identification of artificial segments
+* GeoJSON / JSON-FG: (extension for articial segments?)
+* FlatGeoBuf:
+* MVT: buffer around quantization grid, allowing to differentiate artificial edges of polygons
+* https://github.com/maplibre/maplibre-tile-spec[MapLibre Vector Tiles]

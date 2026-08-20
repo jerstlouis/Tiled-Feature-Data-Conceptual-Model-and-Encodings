@@ -1,0 +1,12 @@
+/26-052.html
+/26-052.pdf
+/26-052.doc
+*.err
+*.abort
+iev/
+relaton/
+.DS_Store
+*.log.txt
+*.xml
+*.doc
+*.err.html
